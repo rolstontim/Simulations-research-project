@@ -248,6 +248,9 @@ class GallerySim:
 
     def Start(self):
         ## TODO, implement the while loop thing used in A3
+        #this is our 'main' function, processes all our events
+        
+
         pass
 
 
@@ -295,6 +298,7 @@ class GallerySim:
 
         # get the painting with the highest score
         painting_scores = np.array([customer.scorePainting(p) for p in self.paintings])
+        best_painting: Painting #placeholder to define variable (fix!!)
 
         bestIndex = np.argmax(painting_scores)
 
@@ -322,4 +326,12 @@ class GallerySim:
         return
 
 
+def main():
+    '''Produce data for multiple scenarios (for scenario run simulation w/ 5 different random seeds)
+        and process collected data.'''
+    test = GallerySim(4,10, True)
+    
+
+if __name__ == '__main__':
+    main()
 
