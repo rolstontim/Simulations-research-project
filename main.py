@@ -1,5 +1,6 @@
 import numpy as np
 import splaytree as SplayTree
+import math
 
 
 ## RANDOM GEN PARAMS
@@ -56,56 +57,6 @@ class Painting:
         self.style = style
         self.num_viewers = 0
         self.quality: float = np.random.normal(QUALITY_MEAN, QUALITY_STD)
-    
-class Event:
-    def __init__(self, type: EventType, time: float, customer: Customer):
-        self.time = time
-        self.customer = customer
-        self.type = type
-    
-    def get_time(self):
-        return self.time
-
-    def __lt__(self, other):
-        return self.time < other.get_time()
-
-    def __eq__(self, other):
-        return self.time == other.get_time()
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __gt__(self, other):
-        return not self.__lt__(other) and not self.__eq__(other)
-
-    def __le__(self, other):
-        return self.__lt__(other) or self.__eq__(other)
-
-    def __ge__(self, other):
-        return self.__gt__(other) or self.__eq__(other)
-
-### EVENT LIST CODE ###
-class EventList:
-
-    def __init__(self):
-        self.splaytree = SplayTree()
-
-    def enqueue(self, n):
-        self.splaytree.insert(n)
-
-    def getMin(self):
-        return self.splaytree.findMin()
-    
-    def dequeue(self):
-        return self.splaytree.remove(self.splaytree.findMin())
-
-class CustomerStats:
-    def __init__(self):
-        self.arrival_time = 0.0
-        self.departure_time = 0.0
-        self.num_paintings_viewed = 0
-        self.total_viewing_time = 0.0
-        self.score_history = []
 
 class Customer:
 
@@ -161,6 +112,59 @@ class Customer:
 
         return qualityScore + viewerScore + styleScore
 
+
+    
+class Event:
+    def __init__(self, type: EventType, time: float, customer: Customer):
+        self.time = time
+        self.customer = customer
+        self.type = type
+    
+    def get_time(self):
+        return self.time
+
+    def __lt__(self, other):
+        return self.time < other.get_time()
+
+    def __eq__(self, other):
+        return self.time == other.get_time()
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __gt__(self, other):
+        return not self.__lt__(other) and not self.__eq__(other)
+
+    def __le__(self, other):
+        return self.__lt__(other) or self.__eq__(other)
+
+    def __ge__(self, other):
+        return self.__gt__(other) or self.__eq__(other)
+
+### EVENT LIST CODE ###
+class EventList:
+
+    def __init__(self):
+        self.splaytree = SplayTree()
+
+    def enqueue(self, n):
+        self.splaytree.insert(n)
+
+    def getMin(self):
+        return self.splaytree.findMin()
+    
+    def dequeue(self):
+        return self.splaytree.remove(self.splaytree.findMin())
+
+class CustomerStats:
+    def __init__(self):
+        self.arrival_time = 0.0
+        self.departure_time = 0.0
+        self.num_paintings_viewed = 0
+        self.total_viewing_time = 0.0
+        self.score_history = []
+
+#sarah: this is where customer class used to be
 class SimStats:
     def __init__(self, num_customers, num_paintings):
         self.num_customers = num_customers
