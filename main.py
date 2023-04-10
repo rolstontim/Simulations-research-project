@@ -146,7 +146,7 @@ class Event:
 class EventList:
 
     def __init__(self):
-        self.splaytree = SplayTree.SplayTree() #sarah: have to call .splaytree()
+        self.splaytree = SplayTree.SplayTree() 
 
     def enqueue(self, n):
         self.splaytree.insert(n)
@@ -169,6 +169,7 @@ class CustomerStats:
         self.score_history = []
 
 #sarah: this is where customer class used to be
+
 class SimStats:
     def __init__(self, num_customers, num_paintings):
         self.num_customers = num_customers
@@ -233,12 +234,12 @@ class GallerySim:
                 self.ProcessArrival(next_event)
             elif next_event.type == EventType.DEPARTURE:
                 self.ProcessDeparture(next_event)
-            elif next_event.type == EventType.VIEWING:
-                self.ProcessViewing(next_event)
+            elif next_event.type == EventType.MOVE: #sarah: changed this from VIEWING to MOVE to match rest of code
+                self.ProcessMove(next_event)
             else:
                 raise Exception("Invalid Event Type")
             #increment num_departed so the program ends (just here while testing)
-            self.stats.num_departed += 1
+            #self.stats.num_departed += 1
                 
 
 
@@ -253,14 +254,6 @@ class GallerySim:
     def generateTolerance(self):
         return self.rng.normal(TOLERANCE_MEAN, TOLERANCE_STD)
 
-    
-
-    def Start(self):
-        ## TODO, implement the while loop thing used in A3
-        #this is our 'main' function, processes all our events
-        
-
-        pass
 
 
     def ProcessArrival(self, evt: Event):
@@ -268,6 +261,9 @@ class GallerySim:
         evt.customer.stats.arrived = True
         self.stats.num_arrived += 1
 
+        #process initial move (this occurs immidiately after customer arrives, based on current system state)
+        evt.type = EventType.MOVE #event is now Move
+        self.ProcessMove(evt)
 
         # Schedule the next arrival
         self.ScheduleArrival()
