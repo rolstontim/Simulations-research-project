@@ -237,6 +237,8 @@ class GallerySim:
                 self.ProcessViewing(next_event)
             else:
                 raise Exception("Invalid Event Type")
+            #increment num_departed so the program ends (just here while testing)
+            self.stats.num_departed += 1
                 
 
 
