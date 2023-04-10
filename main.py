@@ -199,11 +199,13 @@ class SimStats:
 
 
 class GallerySim:
-    def __init__(self, num_paintings: int, num_customers: int, DEBUG=False):
+    def __init__(self, num_paintings: int, num_customers: int, seed: int, DEBUG=False): 
+        #sarah: gotta have a seed for all random variates so we can replicate our data (TODO: add seed/rng for the rest of random functions)
         self.CustomersLeft = num_customers
 
         self.num_paintings = num_paintings
         self.num_customers = num_customers
+        self.seed = seed
 
         self.paintings = [Painting(i, Style.random()) for i in range(num_paintings)]
 
@@ -212,7 +214,7 @@ class GallerySim:
         self.time = 0.0
         self.FutureEventList = EventList()
 
-        self.rng = np.random.default_rng()
+        self.rng = np.random.default_rng(seed=self.seed)
         self.customer = []
 
         # Schedule the first arrival
@@ -243,12 +245,11 @@ class GallerySim:
         self.customer = [i for i in self.customer if i.stats.departure_time != -1.0 ]
         
         #print([c.id for c in self.customer])
-        #self.stats.printStats() #problem: float division by zero for customers who leave w/out seeing any paintings
+        #self.stats.printStats() #TODO: fix float division by zero for customers who leave w/out seeing any paintings
         # print('\n customer stats:')
         # print(['arrival time %.4f, depart time: %.4f, num paintings: %.4f, total view time: %.4f '
         #       %(c.stats.arrival_time, c.stats.departure_time, c.stats.num_paintings_viewed, c.stats.total_viewing_time) for c in self.customer])
         # print('customer score histories: ', [ str(c.stats.score_history) for c in self.customer])
-                
 
 
     def generateInterArrivalTime(self):
@@ -345,9 +346,9 @@ class GallerySim:
 
 
 def main():
-    '''Produce data for multiple scenarios (for scenario run simulation w/ 5 different random seeds)
+    '''Produce data for multiple scenarios (for each scenario, run simulation w/ 5 different initial random seeds)
         and process collected data.'''
-    test = GallerySim(4,10, True)
+    test = GallerySim(4,10,42, True)
     
 
 if __name__ == '__main__':
