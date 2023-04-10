@@ -1,6 +1,7 @@
 import numpy as np
 import splaytree as SplayTree
 import math
+from enum import Enum
 
 
 ## RANDOM GEN PARAMS
@@ -26,7 +27,7 @@ PATIENCE_CONSTANT = 1.0
 QUALITY_CONSTANT = 1.0
 
 # enum of event types
-class EventType:
+class EventType(Enum):
     ARRIVAL = 0
     DEPARTURE = 1
     MOVE = 2
@@ -42,22 +43,34 @@ class EventType:
             return "UNKNOWN"
 
 # enum of painting styles
-class Style:
+class Style(Enum):
     BAROQUE = 0
     IMPRESSIONIST = 1
     MODERN = 2
     ABSTRACT = 3
 
+    def __str__(self):
+        if self == Style.BAROQUE:
+            return "BAROQUE"
+        elif self == Style.IMPRESSIONIST:
+            return "IMPRESSIONIST"
+        elif self == Style.MODERN:
+            return "MODERN"
+        elif self == Style.ABSTRACT:
+            return "ABSTRACT"
+        else:
+            return "UNKNOWN"
+
     @staticmethod
-    def random():
-        return np.random.randint(0, 4)
+    def random(rng):
+        return rng.integers(0, 4)
 
 class Painting:
-    def __init__(self, id: int, style: Style):
+    def __init__(self, id: int, style: Style, rng):
         self.id = id
         self.style = style
         self.num_viewers = 0
-        self.quality: float = np.random.normal(QUALITY_MEAN, QUALITY_STD)
+        self.quality: float = rng.normal(QUALITY_MEAN, QUALITY_STD)
 
 class Customer:
 
@@ -67,7 +80,8 @@ class Customer:
         self.id: int = Customer.CurrentID
         Customer.CurrentID += 1
 
-        self.favorite_style: Style = Style.random()
+        self.rng = rng
+        self.favorite_style: Style = Style.random(rng)
 
         # positive number, higher the tolerance the less affectec the customer is by the number of viewers
         self.tolerance: float = rng.normal(TOLERANCE_MEAN, TOLERANCE_STD)
@@ -81,7 +95,7 @@ class Customer:
 
     def beginViewing(self, painting: Painting, time: float):
         painting.num_viewers += 1
-        self.viewing_time: float = np.random.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD)
+        self.viewing_time: float = self.rng.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD)
         return self.viewing_time
 
     def calcViewerScore(self, num_viewers):
@@ -163,7 +177,9 @@ class EventList:
 class CustomerStats:
     def __init__(self):
         self.arrival_time = 0.0
-        self.departure_time = -1.0 #sarah: change to -1.0 to catch customers that have not yet left at end of simulation
+        self.departure_time = 0.0 #sarah: change to -1.0 to catch customers that have not yet left at end of simulation
+        self.departed = False
+        self.arrived = False
         self.num_paintings_viewed = 0
         self.total_viewing_time = 0.0
         self.score_history = []
@@ -200,6 +216,7 @@ class SimStats:
 
 class GallerySim:
     def __init__(self, num_paintings: int, num_customers: int, seed: int, DEBUG=False): 
+        self.DEBUG=DEBUG
         #sarah: gotta have a seed for all random variates so we can replicate our data (TODO: add seed/rng for the rest of random functions)
         self.CustomersLeft = num_customers
 
@@ -207,15 +224,17 @@ class GallerySim:
         self.num_customers = num_customers
         self.seed = seed
 
-        self.paintings = [Painting(i, Style.random()) for i in range(num_paintings)]
+        self.rng = np.random.default_rng(seed=self.seed)
+
+        self.paintings = [Painting(i, Style.random(self.rng), self.rng) for i in range(num_paintings)]
 
         self.stats = SimStats(self.num_customers, self.num_paintings)
 
         self.time = 0.0
         self.FutureEventList = EventList()
 
-        self.rng = np.random.default_rng(seed=self.seed)
         self.customer = []
+
 
         # Schedule the first arrival
         self.ScheduleArrival()
@@ -226,12 +245,11 @@ class GallerySim:
             next_event = self.FutureEventList.dequeue()
             self.time = next_event.time
 
-            if(DEBUG):
-                print("Event Type: " + str(next_event.type) + " Time: " + str(self.time) + " Customer: " + str(next_event.customer.id))
+            if(self.DEBUG):
+                print("Event Type: " + next_event.type.__str__() + " Time: " + str(self.time) + " Customer: " + str(next_event.customer.id))
 
             # process event
             if next_event.type == EventType.ARRIVAL:
-                print()
                 self.ProcessArrival(next_event)
             elif next_event.type == EventType.DEPARTURE:
                 self.ProcessDeparture(next_event)
@@ -242,10 +260,10 @@ class GallerySim:
 
         #end of sim, print report:
         #we only want to consider the first customer_number departures, so delete the customers that have not yet departed
-        self.customer = [i for i in self.customer if i.stats.departure_time != -1.0 ]
+        self.customer = [i for i in self.customer if i.stats.departed]
         
         #print([c.id for c in self.customer])
-        #self.stats.printStats() #TODO: fix float division by zero for customers who leave w/out seeing any paintings
+        self.stats.printStats() #TODO: fix float division by zero for customers who leave w/out seeing any paintings
         # print('\n customer stats:')
         # print(['arrival time %.4f, depart time: %.4f, num paintings: %.4f, total view time: %.4f '
         #       %(c.stats.arrival_time, c.stats.departure_time, c.stats.num_paintings_viewed, c.stats.total_viewing_time) for c in self.customer])
@@ -289,7 +307,7 @@ class GallerySim:
         new_cust.arrival_time = next_arrival_time
 
         # create the next arrival event
-        arrival_event = Event(EventType().ARRIVAL, next_arrival_time, new_cust)
+        arrival_event = Event(EventType.ARRIVAL, next_arrival_time, new_cust)
 
         self.customer.append(new_cust)
 
@@ -303,7 +321,10 @@ class GallerySim:
         #all we need to do is update stats:
         self.stats.num_departed += 1
         evt.customer.stats.departure_time = evt.time
-        print('customer', evt.customer.id, 'leaving')
+        evt.customer.stats.departed = True
+        if(self.DEBUG):
+            print('customer', evt.customer.id, 'leaving')
+
 
 
 
@@ -334,6 +355,7 @@ class GallerySim:
         customer.viewedPaintings[bestIndex] = True
 
         self.stats.total_viewing_time += viewing_time
+        self.stats.num_paintings_viewed += 1
 
         # Schedule the next MOVE (sarah: for this customer right?)
         self.FutureEventList.enqueue(Event(EventType.MOVE, self.time + viewing_time, customer))
@@ -348,7 +370,7 @@ class GallerySim:
 def main():
     '''Produce data for multiple scenarios (for each scenario, run simulation w/ 5 different initial random seeds)
         and process collected data.'''
-    test = GallerySim(4,10,42, True)
+    test = GallerySim(4,10,42, False)
     
 
 if __name__ == '__main__':
