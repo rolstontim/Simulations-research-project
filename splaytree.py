@@ -84,7 +84,7 @@ class SplayTree:
         t = self.root
         self.header.left = self.header.right = None
         while True:
-            if key() < t.key():
+            if key < t.key:
                 if t.left == None:
                     break
                 if key < t.left.key:
@@ -97,10 +97,10 @@ class SplayTree:
                 r.left = t
                 r = t
                 t = t.left
-            elif key() > t.key():
+            elif key > t.key:
                 if t.right == None:
                     break
-                if key() > t.right.key():
+                if key > t.right.key:
                     y = t.right
                     t.right = y.left
                     y.left = t

@@ -215,6 +215,7 @@ class GallerySim:
         # Schedule the first arrival
         self.ScheduleArrival()
 
+        #THIS is our main loop (processes all events)
         while(self.stats.num_departed < self.num_customers):
             # get next event
             next_event = self.FutureEventList.dequeue()
@@ -277,7 +278,7 @@ class GallerySim:
         
         next_arrival_time = self.time + self.generateInterArrivalTime()
 
-        new_cust = Customer(self.num_paintings)
+        new_cust = Customer(self.num_paintings, self.rng) #sarah: added rng
         new_cust.arrival_time = next_arrival_time
 
         # create the next arrival event
