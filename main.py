@@ -12,7 +12,7 @@ TOLERANCE_STD = 0.1
 QUALITY_MEAN = 0.5
 QUALITY_STD = 0.1
         
-INTERARRIVAL_TIME_MEAN = 1
+INTERARRIVAL_TIME_MEAN = 10
 INTERARRIVAL_TIME_STD = 0.1 
 #note (sarah): for the exponential distribution, standard deviation=mean
 
@@ -23,9 +23,13 @@ VIEWING_TIME_STD = 0.1
 ## SCORE PARAMS
 ## Adjustes relativve weight of each score.
 ## all between 0 and 1
-STYLE_CONSTANT = 1.0
-PATIENCE_CONSTANT = 1.0
-QUALITY_CONSTANT = 1.0
+STYLE_CONSTANT = 1
+PATIENCE_CONSTANT = 3
+QUALITY_CONSTANT = 2
+
+MIN_SCORE = 20
+
+DEBUG=False
 
 # enum of event types
 class EventType(Enum):
@@ -100,7 +104,10 @@ class Customer:
         return self.viewing_time
 
     def calcViewerScore(self, num_viewers):
-        return 1/(max(math.sqrt(num_viewers) * 1/self.tolerance, 1)) * PATIENCE_CONSTANT * 100
+        retval = 1/(max(math.sqrt(num_viewers) * 1/self.tolerance, 1)) * PATIENCE_CONSTANT * 100
+        if(DEBUG):
+            print("Viewer score: " + str(retval))
+        return retval
     
     def calcQualityScore(self, quality):
         # Higher this is the lower the slope in the middle
@@ -111,15 +118,24 @@ class Customer:
 
         ## For quality we want to have low quality paintings be very undesirable and high quality very desirable but 25-75 should have less of an effect
         ## We can do this by using an inverse sigmoid function
-        return (0.5 - math.log((1-quality)/(quality * MIDPOINT_HEIGHT))) * QUALITY_CONSTANT * 100
+        retval =  (0.5 - math.log((1-quality)/(quality * MIDPOINT_HEIGHT)))/SLOPE_CONSTANT * QUALITY_CONSTANT * 100
+        if(DEBUG):
+            print("Quality score: " + str(retval))
+        return retval
     
     def calcStyleScore(self, style):
-        return 1 * STYLE_CONSTANT if style == self.favorite_style else 0
+
+        retval= 1 * STYLE_CONSTANT if style == self.favorite_style else 0
+        if(DEBUG):
+            print("Style score: " + str(retval))
+        return retval
 
     def scorePainting(self, painting: Painting) -> float:
         if self.viewedPaintings[painting.id]:
             return -1
 
+        if(DEBUG):
+            print("Scoring painting " + str(painting.id) + " for customer " + str(self.id) + " with style " + str(self.favorite_style) + " and tolerance " + str(self.tolerance) + " and quality " + str(painting.quality) + " and viewers " + str(painting.num_viewers) + " and style " + str(painting.style))
         # uses the tolerance and the number of viewers to calculate a score, 
         # score is increased by a multiple if the painting is the same style as the customer's favorite style
         qualityScore = self.calcQualityScore(painting.quality)
@@ -196,6 +212,9 @@ class SimStats:
         self.num_departed = 0
         self.num_paintings_viewed = 0
         self.num_leave_early = 0
+        self.painting_scores = []
+
+        self.num_customers_leave_early = [0 for i in range(num_paintings)]
         
         self.num_painting_views = [0 for i in range(num_paintings)]
 
@@ -205,19 +224,24 @@ class SimStats:
     def printStats(self):
         average_viewing_time = self.total_viewing_time / self.num_paintings_viewed
         average_paintings_viewed = self.num_paintings_viewed / self.num_customers
+        # average painting score is the average for each 
+        average_painting_score = np.average(np.array(self.painting_scores))
 
         print("Average Viewing Time: " + str(average_viewing_time))
         print("Average Paintings Viewed: " + str(average_paintings_viewed))
+        print("Average Painting Score: " + str(average_painting_score))
         print("Number of Customers Arrived: " + str(self.num_arrived))
         print("Number of Customers Departed: " + str(self.num_departed))
         print("Number of Customers Left Early: " + str(self.num_leave_early))
+        #print list of which paintings each customer left early for
+        print("Number of Customers Leave Early for Each Painting: " + str(self.num_customers_leave_early))
 
 
         #timbo - create list of paintings for graph 
-        list_of_paintings = ["painting" +str(i+1) for i in range(self.num_paintings)]
+        #list_of_paintings = ["painting" +str(i+1) for i in range(self.num_paintings)]
             
-        plt.bar(list_of_paintings, self.num_painting_views)
-        plt.show()
+        #plt.bar(list_of_paintings, self.num_painting_views)
+        #plt.show()
 
 
         
@@ -230,7 +254,6 @@ class SimStats:
 class GallerySim:
     def __init__(self, num_paintings: int, num_customers: int, seed: int, DEBUG=False): 
         self.DEBUG=DEBUG
-        #sarah: gotta have a seed for all random variates so we can replicate our data (TODO: add seed/rng for the rest of random functions)
         self.CustomersLeft = num_customers
 
         self.num_paintings = num_paintings
@@ -276,7 +299,7 @@ class GallerySim:
         self.customer = [i for i in self.customer if i.stats.departed]
         
         #print([c.id for c in self.customer])
-        self.stats.printStats() #TODO: fix float division by zero for customers who leave w/out seeing any paintings
+        self.stats.printStats() 
         # print('\n customer stats:')
         # print(['arrival time %.4f, depart time: %.4f, num paintings: %.4f, total view time: %.4f '
         #       %(c.stats.arrival_time, c.stats.departure_time, c.stats.num_paintings_viewed, c.stats.total_viewing_time) for c in self.customer])
@@ -343,11 +366,14 @@ class GallerySim:
 
     def ProcessMove(self, evt: Event):
         # Min score at which point the customer will leave instead of going to the next painting
-        MIN_SCORE = 100
 
         customer = evt.customer
         # get the painting with the highest score
         painting_scores = np.array([customer.scorePainting(p) for p in self.paintings])
+        if(DEBUG):
+            print(painting_scores)
+
+        self.stats.painting_scores.extend([x for x in painting_scores if x > 0])
 
         bestIndex = np.argmax(painting_scores)
         best_painting = self.paintings[bestIndex]
@@ -357,6 +383,8 @@ class GallerySim:
             # If the person is leaving early
             if(customer.stats.num_paintings_viewed < self.num_paintings):
                 self.stats.num_leave_early += 1
+                self.stats.num_customers_leave_early[customer.stats.num_paintings_viewed] += 1
+            
 
             # EVent is now a departure
             evt.type = EventType.DEPARTURE
@@ -365,7 +393,8 @@ class GallerySim:
 
         #add view number to painting
         self.stats.num_painting_views[bestIndex] += 1
-        print(self.stats.num_painting_views)
+        if(DEBUG):
+            print(self.stats.num_painting_views)
 
 
 
@@ -390,7 +419,7 @@ class GallerySim:
 def main():
     '''Produce data for multiple scenarios (for each scenario, run simulation w/ 5 different initial random seeds)
         and process collected data.'''
-    test = GallerySim(4,10,42, False)
+    test = GallerySim(4,1000,1, False)
     
 
 if __name__ == '__main__':
