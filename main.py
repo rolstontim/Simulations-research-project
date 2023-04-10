@@ -155,7 +155,10 @@ class EventList:
         return self.splaytree.findMin()
     
     def dequeue(self):
-        return self.splaytree.remove(self.splaytree.findMin())
+        #sarah: splaytree.remove() doesn't return the key it removes, so we have to do it ourselves
+        min_node = self.splaytree.findMin()
+        self.splaytree.remove(min_node)
+        return min_node
 
 class CustomerStats:
     def __init__(self):
