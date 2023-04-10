@@ -11,7 +11,8 @@ QUALITY_MEAN = 0.5
 QUALITY_STD = 0.1
         
 INTERARRIVAL_TIME_MEAN = 1
-INTERARRIVAL_TIME_STD = 0.1
+INTERARRIVAL_TIME_STD = 0.1 
+#note (sarah): for the exponential distribution, standard deviation=mean
 
 VIEWING_TIME_MEAN = 1
 VIEWING_TIME_STD = 0.1
@@ -145,7 +146,7 @@ class Event:
 class EventList:
 
     def __init__(self):
-        self.splaytree = SplayTree()
+        self.splaytree = SplayTree.SplayTree() #sarah: have to call .splaytree()
 
     def enqueue(self, n):
         self.splaytree.insert(n)
@@ -236,7 +237,9 @@ class GallerySim:
 
 
     def generateInterArrivalTime(self):
-        return self.rng.exponential(INTERARRIVAL_TIME_MEAN, INTERARRIVAL_TIME_STD)
+        return self.rng.exponential(INTERARRIVAL_TIME_MEAN)#, INTERARRIVAL_TIME_STD)
+        #sarah: rng.exponential takes parameters scale: float, and size: (int or tuple of ints).
+        #   doesn't take a parameter for std dev because it is calculated from the rate (ie. std=mean)
 
     def generateViewingTime(self):
         return self.rng.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD)
