@@ -2,6 +2,7 @@ import numpy as np
 import splaytree as SplayTree
 import math
 from enum import Enum
+import matplotlib.pyplot as plt
 
 
 ## RANDOM GEN PARAMS
@@ -195,6 +196,9 @@ class SimStats:
         self.num_departed = 0
         self.num_paintings_viewed = 0
         self.num_leave_early = 0
+        
+        self.num_painting_views = [0 for i in range(num_paintings)]
+
 
 
 
@@ -207,6 +211,15 @@ class SimStats:
         print("Number of Customers Arrived: " + str(self.num_arrived))
         print("Number of Customers Departed: " + str(self.num_departed))
         print("Number of Customers Left Early: " + str(self.num_leave_early))
+
+
+        #timbo - create list of paintings for graph 
+        list_of_paintings = ["painting" +str(i+1) for i in range(self.num_paintings)]
+            
+        plt.bar(list_of_paintings, self.num_painting_views)
+        plt.show()
+
+
         
 
 
@@ -339,6 +352,7 @@ class GallerySim:
         bestIndex = np.argmax(painting_scores)
         best_painting = self.paintings[bestIndex]
 
+        #print(painting_scores[bestIndex])
         if(painting_scores[bestIndex] < MIN_SCORE):
             # If the person is leaving early
             if(customer.stats.num_paintings_viewed < self.num_paintings):
@@ -348,6 +362,12 @@ class GallerySim:
             evt.type = EventType.DEPARTURE
             self.ProcessDeparture(evt)
             return #otherwise customer continues to view painting
+
+        #add view number to painting
+        self.stats.num_painting_views[bestIndex] += 1
+        print(self.stats.num_painting_views)
+
+
 
 
         # begin viewing the painting
