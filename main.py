@@ -95,8 +95,11 @@ class Customer:
 
 
         self.stats = CustomerStats()
-       
 
+    #get the customer's favorite style
+    def favoriteStyle(self):
+        return self.favorite_style
+       
 
     def beginViewing(self, painting: Painting, time: float):
         painting.num_viewers += 1
@@ -135,6 +138,7 @@ class Customer:
     def scorePainting(self, painting: Painting) -> float:
         if self.viewedPaintings[painting.id]:
             return -1
+        
 
         if(DEBUG):
             print("Scoring painting " + str(painting.id) + " for customer " + str(self.id) + " with style " + str(self.favorite_style) + " and tolerance " + str(self.tolerance) + " and quality " + str(painting.quality) + " and viewers " + str(painting.num_viewers) + " and style " + str(painting.style))
@@ -216,6 +220,14 @@ class SimStats:
         self.num_leave_early = 0
         self.painting_scores = []
 
+        #keep track of number of people with favorite style paintings 
+        self.num_baroque = 0
+        self.num_impressionist = 0
+        self.num_modern = 0
+        self.num_abstract = 0
+        self.saw_favorite_style = 0 #calculated at ProcessMove 
+        self.attractiveness_for_favourite = 0 #calculated at ProcessMove
+
         self.num_customers_leave_early = [0 for i in range(num_paintings)]
         
         self.num_painting_views = [0 for i in range(num_paintings)]
@@ -223,14 +235,19 @@ class SimStats:
 
 
 
+
     def printStats(self):
         average_viewing_time = self.total_viewing_time / self.num_paintings_viewed
-        average_paintings_viewed = self.num_paintings_viewed / self.num_customers
+        average_paintings_viewed = round(((self.num_paintings_viewed / self.num_customers)/self.num_paintings) * 100)
+        percent_saw_favorite_style = round((self.saw_favorite_style / self.num_customers) * 100)
+        avgerage_attractiveness_for_favourite = round((self.attractiveness_for_favourite / self.saw_favorite_style))
         # average painting score is the average for each 
         average_painting_score = np.average(np.array(self.painting_scores))
 
         print("Average Viewing Time: " + str(average_viewing_time))
-        print("Average Paintings Viewed: " + str(average_paintings_viewed))
+        print("Average Paintings Viewed: " + str(average_paintings_viewed) + "%")
+        print("Percentage of people who saw their favourite style:" + str(percent_saw_favorite_style) + "%")
+        print("Average Attractiveness when customer views their favourite style: " +str(avgerage_attractiveness_for_favourite))
         print("Average Painting Score: " + str(average_painting_score))
         print("Number of Customers Arrived: " + str(self.num_arrived))
         print("Number of Customers Departed: " + str(self.num_departed))
@@ -245,7 +262,11 @@ class SimStats:
         #plt.bar(list_of_paintings, self.num_painting_views)
         #plt.show()
 
+        #create graph that shows percentage of favorite style seen
+        #list_of_style_counts = [(self.num_baroque/self.num_customers)*100, (self.num_impressionist/self.num_customers)*100, (self.num_modern/self.num_customers)*100, (self.num_abstract/self.num_customers)*100]
 
+        #plt.bar(["Baroque", "Impressionist", "Modern", "Abstract"], list_of_style_counts)
+        #plt.show()
         
 
 
@@ -327,6 +348,16 @@ class GallerySim:
         self.stats.num_arrived += 1
         evt.customer.stats.arrival_time = evt.time #update stats for this customer 
 
+        #if statements to count number of favourite styles
+        if evt.customer.favorite_style == 0: #BAROQUE
+            self.stats.num_baroque += 1
+        elif evt.customer.favorite_style == 1: #IMPRESSIONIST
+            self.stats.num_impressionist += 1
+        elif evt.customer.favorite_style == 2: #MODERN  
+            self.stats.num_modern += 1
+        elif evt.customer.favorite_style == 3: #ABSTRACT
+            self.stats.num_abstract += 1 
+
         #process initial move (this occurs immidiately after customer arrives)
         evt.type = EventType.MOVE #event is now Move
         self.ProcessMove(evt)
@@ -388,7 +419,6 @@ class GallerySim:
         bestIndex = np.argmax(painting_scores)
         best_painting = self.paintings[bestIndex]
 
-        #print(painting_scores[bestIndex])
         if(painting_scores[bestIndex] < MIN_SCORE):
             # If the person is leaving early
             if(customer.stats.num_paintings_viewed < self.num_paintings):
@@ -406,7 +436,12 @@ class GallerySim:
         if(DEBUG):
             print(self.stats.num_painting_views)
 
+        #check if customer is seeing their favourite style
+        if(best_painting.style == evt.customer.favorite_style):
+            self.stats.saw_favorite_style += 1
 
+            #keep track of total number of attraciveness levels when all customers see their favourite style
+            self.stats.attractiveness_for_favourite += customer.scorePainting(best_painting)
 
 
         # begin viewing the painting
