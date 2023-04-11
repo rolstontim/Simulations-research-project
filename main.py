@@ -7,17 +7,17 @@ import matplotlib.pyplot as plt
 
 ## RANDOM GEN PARAMS
 TOLERANCE_MEAN = 5
-TOLERANCE_STD = 4
+TOLERANCE_STD = 1
 
-QUALITY_MEAN = 0.5
+QUALITY_MEAN = 0.2
 QUALITY_STD = 0.4
         
-INTERARRIVAL_TIME_MEAN = 10
+INTERARRIVAL_TIME_MEAN = 1
 INTERARRIVAL_TIME_STD = 0.5
 #note (sarah): for the exponential distribution, standard deviation=mean
 
-VIEWING_TIME_MEAN = 5
-VIEWING_TIME_STD = 5
+VIEWING_TIME_MEAN = 1
+VIEWING_TIME_STD = 0.5
 
 
 ## SCORE PARAMS
@@ -125,7 +125,7 @@ class Customer:
 
         ## For quality we want to have low quality paintings be very undesirable and high quality very desirable but 25-75 should have less of an effect
         ## We can do this by using an inverse sigmoid function
-        retval =  (0.5 - math.log((1-quality)/(quality * MIDPOINT_HEIGHT)))/SLOPE_CONSTANT * QUALITY_CONSTANT * 100
+        retval =  (0.5 - math.log((1-quality)/(quality * MIDPOINT_HEIGHT))/SLOPE_CONSTANT) * QUALITY_CONSTANT * 100
         if(DEBUG):
             print("Quality score: " + str(retval))
         return retval
@@ -265,6 +265,8 @@ class SimStats:
         painting_qualities = [i.quality for i in paintings]
 
 
+        ###### Performance Stats ######
+
 
         ###### General Stats ######
         print("General Stats:")
@@ -310,58 +312,12 @@ class SimStats:
         print()
         print("Statistics for Customers who leave for Each Painting: {}".format(self.num_customers_leave_early))
         print("Average Score for painting that made Customers leave Early: {:.2f}".format(np.average(np.array(self.leave_early_scores))))
-        print("Average number of paintings left when customer leaves early: {:.2f}".format(avg_num_paintings_left))
-
-        # ###### General Stats ######
-        # print("General Stats:")
-
-        # print("Number of Customers Arrived: " + str(self.num_arrived))
-        # print("Number of Customers Departed: " + str(self.num_departed))
-
-        # print("Average Viewing Time for each painting: " + str(average_viewing_time))
-        # print("Average Paintings Viewed per Customer: " + str(average_paintings_viewed) + "%")
-        # print("Average Painting Score: " + str(np.average(np.array(self.painting_scores))))
-        # print("Maximum Painting Score: " + str(np.max(np.array(self.painting_scores))))
-        # print("Minimum Painting Score: " + str(np.min(np.array(self.painting_scores))))
-
-
-        # ###### Painting Stats ######
-        # print()
-        # print("Statistics for Each Painting:")
-        # print("Number of Paintings: " + str(self.num_paintings))
-        # print("Average Number of Views for Each Painting: " + str(np.average(np.array(self.num_painting_views))))
-        # print("Quality of Each Painting: " + str(painting_qualities))
-        # ## When printing the average quality round the number to 2 decimal places
-
-        # print("Average quality of paintings: {:0.2f}".format(np.average(np.array(painting_qualities))))
-        # print("Maximum quality of paintings: " + str(np.max(np.array(painting_qualities))))
-        # print("Minimum quality of paintings: " + str(np.min(np.array(painting_qualities))))
-
-        # ###### Customer Stats ######
-        # print()
-        # print("Statistics for Each Customer:")
-        # print("Number of Customers: " + str(self.num_customers))
-        # print("Average Percentage of Paintings Viewed per Customer: " + str(average_paintings_viewed) + "%")
-        # print("Average Viewing Time for each painting: " + str(average_viewing_time))
-        # print("Average Painting Score: " + str(np.average(np.array(self.painting_scores))))
-        # print("Maximum Painting Score: " + str(np.max(np.array(self.painting_scores))))
-        # print("Minimum Painting Score: " + str(np.min(np.array(self.painting_scores))))
-
-
-
-        # ###### Favorite Style Stats ######
-
-        # print()
-        # print("Statistics for Customers who saw their favorite style:")
-
-        # print("Number of Customers who saw their favorite style: " + str(percent_saw_favorite_style))
-        # print("Average Attractiveness when customer views their favourite style: " +str(avgerage_attractiveness_for_favourite))
+        print("Average number of paintings left when customer leaves early: {}".format(avg_num_paintings_left))
+        print("Percentage of Customers who leave early: {}%".format(self.num_leave_early/self.num_customers * 100))
 
 
 
 
-        # ###### LEAVE EARLY STATS ######
-        # avg_num_paintings_left = self.num_painting_left_leave_early/self.num_leave_early if self.num_leave_early > 0 else "NA"
 
         # print()
         # print("Statistics for Customers who leave for Each Painting: " + str(self.num_customers_leave_early))
