@@ -101,6 +101,8 @@ class Customer:
     def beginViewing(self, painting: Painting, time: float):
         painting.num_viewers += 1
         self.viewing_time: float = self.rng.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD)
+        # if(DEBUG): #(sarah)
+        #     print(self.id,' started viewing', painting.id, 'now there are %d viewers'%painting.num_viewers)
         return self.viewing_time
 
     def calcViewerScore(self, num_viewers):
@@ -194,7 +196,7 @@ class EventList:
 class CustomerStats:
     def __init__(self):
         self.arrival_time = 0.0
-        self.departure_time = 0.0 #sarah: change to -1.0 to catch customers that have not yet left at end of simulation
+        self.departure_time = 0.0 
         self.departed = False
         self.arrived = False
         self.num_paintings_viewed = 0
@@ -368,6 +370,14 @@ class GallerySim:
         # Min score at which point the customer will leave instead of going to the next painting
 
         customer = evt.customer
+
+        #sarah: if customer is already at a painting, need to decrease that painting's num_viewers since somebody is leaving
+        if(customer.stats.num_paintings_viewed > 0):
+            prev_painting = customer.stats.score_history[-1][0]
+            prev_painting.num_viewers -= 1
+            # if(DEBUG):
+            #     print(customer.id,' left painting', prev_painting.id, 'now there are %d viewers' %prev_painting.num_viewers)
+        
         # get the painting with the highest score
         painting_scores = np.array([customer.scorePainting(p) for p in self.paintings])
         if(DEBUG):
@@ -411,7 +421,9 @@ class GallerySim:
 
         customer.stats.total_viewing_time += viewing_time
         customer.stats.num_paintings_viewed += 1
-        customer.stats.score_history.append((best_painting.id, painting_scores[bestIndex])) #adding as tuple so we can keep track of both
+        customer.stats.score_history.append((best_painting, painting_scores[bestIndex])) #adding as tuple so we can keep track of both
+
+        
 
         return
 
@@ -420,7 +432,6 @@ def main():
     '''Produce data for multiple scenarios (for each scenario, run simulation w/ 5 different initial random seeds)
         and process collected data.'''
     test = GallerySim(4,1000,1, False)
-    
 
 if __name__ == '__main__':
     main()
