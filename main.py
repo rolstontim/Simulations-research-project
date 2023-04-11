@@ -6,28 +6,28 @@ import matplotlib.pyplot as plt
 
 
 ## RANDOM GEN PARAMS
-TOLERANCE_MEAN = 0.5
-TOLERANCE_STD = 0.1
+TOLERANCE_MEAN = 5
+TOLERANCE_STD = 4
 
 QUALITY_MEAN = 0.5
-QUALITY_STD = 0.1
+QUALITY_STD = 0.4
         
 INTERARRIVAL_TIME_MEAN = 10
-INTERARRIVAL_TIME_STD = 0.1 
+INTERARRIVAL_TIME_STD = 0.5
 #note (sarah): for the exponential distribution, standard deviation=mean
 
-VIEWING_TIME_MEAN = 1
-VIEWING_TIME_STD = 0.1
+VIEWING_TIME_MEAN = 5
+VIEWING_TIME_STD = 5
 
 
 ## SCORE PARAMS
 ## Adjustes relativve weight of each score.
 ## all between 0 and 1
 STYLE_CONSTANT = 1
-PATIENCE_CONSTANT = 3
-QUALITY_CONSTANT = 2
+PATIENCE_CONSTANT = 1
+QUALITY_CONSTANT = 1
 
-MIN_SCORE = 20
+MIN_SCORE = 50
 
 DEBUG=False
 
@@ -75,7 +75,7 @@ class Painting:
         self.id = id
         self.style = style
         self.num_viewers = 0
-        self.quality: float = rng.normal(QUALITY_MEAN, QUALITY_STD)
+        self.quality: float = np.clip(rng.normal(QUALITY_MEAN, QUALITY_STD), 0, 0.9999)
 
 class Customer:
 
@@ -89,9 +89,11 @@ class Customer:
         self.favorite_style: Style = Style.random(rng)
 
         # positive number, higher the tolerance the less affectec the customer is by the number of viewers
-        self.tolerance: float = rng.normal(TOLERANCE_MEAN, TOLERANCE_STD)
+        self.tolerance: float = np.clip(rng.normal(TOLERANCE_MEAN, TOLERANCE_STD), 0.000001, 100)
 
         self.viewedPaintings = np.full(num_paintings, False)
+
+        self.current_painting: Painting = None
 
 
         self.stats = CustomerStats()
@@ -103,7 +105,7 @@ class Customer:
 
     def beginViewing(self, painting: Painting, time: float):
         painting.num_viewers += 1
-        self.viewing_time: float = self.rng.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD)
+        self.viewing_time: float = np.clip(self.rng.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD), 0.000001, 100)
         # if(DEBUG): #(sarah)
         #     print(self.id,' started viewing', painting.id, 'now there are %d viewers'%painting.num_viewers)
         return self.viewing_time
@@ -206,6 +208,7 @@ class CustomerStats:
         self.num_paintings_viewed = 0
         self.total_viewing_time = 0.0
         self.score_history = []
+        self.saw_favorite_style = False
 
 
 class SimStats:
@@ -225,35 +228,145 @@ class SimStats:
         self.num_impressionist = 0
         self.num_modern = 0
         self.num_abstract = 0
-        self.saw_favorite_style = 0 #calculated at ProcessMove 
         self.attractiveness_for_favourite = 0 #calculated at ProcessMove
 
         self.num_customers_leave_early = [0 for i in range(num_paintings)]
         
         self.num_painting_views = [0 for i in range(num_paintings)]
 
+        self.leave_early_scores = []
+        self.num_painting_left_leave_early = 0
 
 
 
 
-    def printStats(self):
+
+    def printStats(self, customers, paintings):
         average_viewing_time = self.total_viewing_time / self.num_paintings_viewed
-        average_paintings_viewed = round(((self.num_paintings_viewed / self.num_customers)/self.num_paintings) * 100)
-        percent_saw_favorite_style = round((self.saw_favorite_style / self.num_customers) * 100)
-        avgerage_attractiveness_for_favourite = round((self.attractiveness_for_favourite / self.saw_favorite_style))
-        # average painting score is the average for each 
+
+        average_paintings_viewed = (((self.num_paintings_viewed / self.num_customers)/self.num_paintings) * 100)
+
+        # percentage of people who saw their favorite style
+        # count number of customers who saw their favorite style
+        saw_favorite_style = 0
+        for customer in customers:
+            if customer.stats.saw_favorite_style:
+                saw_favorite_style += 1
+
+        percent_saw_favorite_style = ((saw_favorite_style / self.num_customers) * 100)
+
+        # average attractiveness for favourite is the average attractiveness for all customers who saw their favourite style
+        avgerage_attractiveness_for_favourite = ((self.attractiveness_for_favourite / saw_favorite_style))
+
+        # average painting score is the average for all painting scores for all customers
         average_painting_score = np.average(np.array(self.painting_scores))
 
-        print("Average Viewing Time: " + str(average_viewing_time))
-        print("Average Paintings Viewed: " + str(average_paintings_viewed) + "%")
-        print("Percentage of people who saw their favourite style:" + str(percent_saw_favorite_style) + "%")
-        print("Average Attractiveness when customer views their favourite style: " +str(avgerage_attractiveness_for_favourite))
-        print("Average Painting Score: " + str(average_painting_score))
-        print("Number of Customers Arrived: " + str(self.num_arrived))
-        print("Number of Customers Departed: " + str(self.num_departed))
-        print("Number of Customers Left Early: " + str(self.num_leave_early))
-        #print list of which paintings each customer left early for
-        print("Number of Customers Leave Early for Each Painting: " + str(self.num_customers_leave_early))
+        # make list of painting qualities in one line. From the 'paintings' array
+        painting_qualities = [i.quality for i in paintings]
+
+
+
+        ###### General Stats ######
+        print("General Stats:")
+
+        print("Number of Customers Arrived: {}".format(self.num_arrived))
+        print("Number of Customers Departed: {}".format(self.num_departed))
+
+
+        ###### Painting Stats ######
+        print()
+        print("Statistics for Each Painting:")
+        print("Number of Paintings: {}".format(self.num_paintings))
+        print("Average Number of Views for Each Painting: {:.2f}".format(np.average(np.array(self.num_painting_views))))
+        print("Quality of Each Painting: {}".format(painting_qualities))
+        ## When printing the average quality round the number to 2 decimal places
+
+        print("Average quality of paintings: {:.2f}".format(np.average(np.array(painting_qualities))))
+        print("Maximum quality of paintings: {:.2f}".format(np.max(np.array(painting_qualities))))
+        print("Minimum quality of paintings: {:.2f}".format(np.min(np.array(painting_qualities))))
+
+        ###### Customer Stats ######
+        print()
+        print("Statistics for Each Customer:")
+        print("Number of Customers: {}".format(self.num_customers))
+        print("Average Percentage of Paintings Viewed per Customer: {:.2f}%".format(average_paintings_viewed))
+        print("Average Viewing Time for each painting: {:.2f}".format(average_viewing_time))
+        print("Average Painting Score: {:.2f}".format(np.average(np.array(self.painting_scores))))
+        print("Maximum Painting Score: {:.2f}".format(np.max(np.array(self.painting_scores))))
+        print("Minimum Painting Score: {:.2f}".format(np.min(np.array(self.painting_scores))))
+
+
+        ###### Favorite Style Stats ######
+        print()
+        print("Statistics for Customers who saw their favorite style:")
+
+        print("Number of Customers who saw their favorite style: {}".format(percent_saw_favorite_style))
+        print("Average Attractiveness when customer views their favourite style: {:.2f}".format(avgerage_attractiveness_for_favourite))
+
+
+        ###### LEAVE EARLY STATS ######
+        avg_num_paintings_left = self.num_painting_left_leave_early/self.num_leave_early if self.num_leave_early > 0 else "NA"
+
+        print()
+        print("Statistics for Customers who leave for Each Painting: {}".format(self.num_customers_leave_early))
+        print("Average Score for painting that made Customers leave Early: {:.2f}".format(np.average(np.array(self.leave_early_scores))))
+        print("Average number of paintings left when customer leaves early: {:.2f}".format(avg_num_paintings_left))
+
+        # ###### General Stats ######
+        # print("General Stats:")
+
+        # print("Number of Customers Arrived: " + str(self.num_arrived))
+        # print("Number of Customers Departed: " + str(self.num_departed))
+
+        # print("Average Viewing Time for each painting: " + str(average_viewing_time))
+        # print("Average Paintings Viewed per Customer: " + str(average_paintings_viewed) + "%")
+        # print("Average Painting Score: " + str(np.average(np.array(self.painting_scores))))
+        # print("Maximum Painting Score: " + str(np.max(np.array(self.painting_scores))))
+        # print("Minimum Painting Score: " + str(np.min(np.array(self.painting_scores))))
+
+
+        # ###### Painting Stats ######
+        # print()
+        # print("Statistics for Each Painting:")
+        # print("Number of Paintings: " + str(self.num_paintings))
+        # print("Average Number of Views for Each Painting: " + str(np.average(np.array(self.num_painting_views))))
+        # print("Quality of Each Painting: " + str(painting_qualities))
+        # ## When printing the average quality round the number to 2 decimal places
+
+        # print("Average quality of paintings: {:0.2f}".format(np.average(np.array(painting_qualities))))
+        # print("Maximum quality of paintings: " + str(np.max(np.array(painting_qualities))))
+        # print("Minimum quality of paintings: " + str(np.min(np.array(painting_qualities))))
+
+        # ###### Customer Stats ######
+        # print()
+        # print("Statistics for Each Customer:")
+        # print("Number of Customers: " + str(self.num_customers))
+        # print("Average Percentage of Paintings Viewed per Customer: " + str(average_paintings_viewed) + "%")
+        # print("Average Viewing Time for each painting: " + str(average_viewing_time))
+        # print("Average Painting Score: " + str(np.average(np.array(self.painting_scores))))
+        # print("Maximum Painting Score: " + str(np.max(np.array(self.painting_scores))))
+        # print("Minimum Painting Score: " + str(np.min(np.array(self.painting_scores))))
+
+
+
+        # ###### Favorite Style Stats ######
+
+        # print()
+        # print("Statistics for Customers who saw their favorite style:")
+
+        # print("Number of Customers who saw their favorite style: " + str(percent_saw_favorite_style))
+        # print("Average Attractiveness when customer views their favourite style: " +str(avgerage_attractiveness_for_favourite))
+
+
+
+
+        # ###### LEAVE EARLY STATS ######
+        # avg_num_paintings_left = self.num_painting_left_leave_early/self.num_leave_early if self.num_leave_early > 0 else "NA"
+
+        # print()
+        # print("Statistics for Customers who leave for Each Painting: " + str(self.num_customers_leave_early))
+        # print("Average Score for painting that made Customers leave Early: " + str(np.average(np.array(self.leave_early_scores))))
+        # print("Average number of paintigs left when customer leaves early: " + str(avg_num_paintings_left))
 
 
         #timbo - create list of paintings for graph 
@@ -322,7 +435,7 @@ class GallerySim:
         self.customer = [i for i in self.customer if i.stats.departed]
         
         #print([c.id for c in self.customer])
-        self.stats.printStats() 
+        self.stats.printStats(self.customer, self.paintings) 
         # print('\n customer stats:')
         # print(['arrival time %.4f, depart time: %.4f, num paintings: %.4f, total view time: %.4f '
         #       %(c.stats.arrival_time, c.stats.departure_time, c.stats.num_paintings_viewed, c.stats.total_viewing_time) for c in self.customer])
@@ -330,15 +443,16 @@ class GallerySim:
 
 
     def generateInterArrivalTime(self):
-        return self.rng.exponential(INTERARRIVAL_TIME_MEAN)#, INTERARRIVAL_TIME_STD)
+        return np.clip(self.rng.exponential(INTERARRIVAL_TIME_MEAN), 0.00001, 100)
+        #, INTERARRIVAL_TIME_STD)
         #sarah: rng.exponential takes parameters scale: float, and size: (int or tuple of ints).
         #   doesn't take a parameter for std dev because it is calculated from the rate (ie. std=mean)
 
-    def generateViewingTime(self):
-        return self.rng.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD)
+    # def generateViewingTime(self):
+    #     return np.clip(self.rng.normal(VIEWING_TIME_MEAN, VIEWING_TIME_STD), 0.00001, 100)
 
-    def generateTolerance(self):
-        return self.rng.normal(TOLERANCE_MEAN, TOLERANCE_STD)
+    # def generateTolerance(self):
+    #     return self.rng.normal(TOLERANCE_MEAN, TOLERANCE_STD)
 
 
 
@@ -404,7 +518,7 @@ class GallerySim:
 
         #sarah: if customer is already at a painting, need to decrease that painting's num_viewers since somebody is leaving
         if(customer.stats.num_paintings_viewed > 0):
-            prev_painting = customer.stats.score_history[-1][0]
+            prev_painting = customer.current_painting #customer.stats.score_history[-1][0]
             prev_painting.num_viewers -= 1
             # if(DEBUG):
             #     print(customer.id,' left painting', prev_painting.id, 'now there are %d viewers' %prev_painting.num_viewers)
@@ -424,6 +538,8 @@ class GallerySim:
             if(customer.stats.num_paintings_viewed < self.num_paintings):
                 self.stats.num_leave_early += 1
                 self.stats.num_customers_leave_early[customer.stats.num_paintings_viewed] += 1
+                self.stats.leave_early_scores.append(painting_scores[bestIndex])
+                self.stats.num_painting_left_leave_early += customer.stats.num_paintings_viewed
             
 
             # EVent is now a departure
@@ -438,7 +554,7 @@ class GallerySim:
 
         #check if customer is seeing their favourite style
         if(best_painting.style == evt.customer.favorite_style):
-            self.stats.saw_favorite_style += 1
+            customer.stats.saw_favorite_style = True
 
             #keep track of total number of attraciveness levels when all customers see their favourite style
             self.stats.attractiveness_for_favourite += customer.scorePainting(best_painting)
@@ -447,7 +563,9 @@ class GallerySim:
         # begin viewing the painting
         viewing_time = customer.beginViewing(best_painting, self.time)
         customer.viewedPaintings[bestIndex] = True
+        customer.current_painting = best_painting
 
+        ## add viewing time to stats
         self.stats.total_viewing_time += viewing_time
         self.stats.num_paintings_viewed += 1
 
@@ -458,15 +576,13 @@ class GallerySim:
         customer.stats.num_paintings_viewed += 1
         customer.stats.score_history.append((best_painting, painting_scores[bestIndex])) #adding as tuple so we can keep track of both
 
-        
-
         return
 
 
 def main():
     '''Produce data for multiple scenarios (for each scenario, run simulation w/ 5 different initial random seeds)
         and process collected data.'''
-    test = GallerySim(4,1000,1, False)
+    test = GallerySim(10,1000,1, False)
 
 if __name__ == '__main__':
     main()
