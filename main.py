@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 
 
 ## RANDOM GEN PARAMS
-TOLERANCE_MEAN = 5
+TOLERANCE_MEAN = 2
 TOLERANCE_STD = 1
 
-QUALITY_MEAN = 0.2
+QUALITY_MEAN = 0.4
 QUALITY_STD = 0.4
         
 INTERARRIVAL_TIME_MEAN = 1
@@ -20,14 +20,15 @@ VIEWING_TIME_MEAN = 1
 VIEWING_TIME_STD = 0.5
 
 
+MIN_SCORE = 130
+
 ## SCORE PARAMS
 ## Adjustes relativve weight of each score.
 ## all between 0 and 1
-STYLE_CONSTANT = 1
+STYLE_CONSTANT = 0.25
 PATIENCE_CONSTANT = 1
 QUALITY_CONSTANT = 1
 
-MIN_SCORE = 50
 
 DEBUG=False
 
@@ -244,7 +245,7 @@ class SimStats:
     def printStats(self, customers, paintings):
         average_viewing_time = self.total_viewing_time / self.num_paintings_viewed
 
-        average_paintings_viewed = (((self.num_paintings_viewed / self.num_customers)/self.num_paintings) * 100)
+        average_paintings_viewed = (((self.num_paintings_viewed / len(paintings))/len(customers)) * 100)
 
         # percentage of people who saw their favorite style
         # count number of customers who saw their favorite style
@@ -439,6 +440,8 @@ class GallerySim:
 
     def ScheduleArrival(self):
         # Scheduling the next arrival        
+        if(self.stats.num_arrived >= self.num_customers):
+            return
         
         next_arrival_time = self.time + self.generateInterArrivalTime()
 
