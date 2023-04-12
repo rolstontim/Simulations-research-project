@@ -6,17 +6,17 @@ import matplotlib.pyplot as plt
 
 
 ## RANDOM GEN PARAMS
-TOLERANCE_MEAN = 2
-TOLERANCE_STD = 1
+TOLERANCE_MEAN = 3
+TOLERANCE_STD = 2
 
-QUALITY_MEAN = 0.4
-QUALITY_STD = 0.4
+QUALITY_MEAN = 0.5
+QUALITY_STD = 0.3
         
 INTERARRIVAL_TIME_MEAN = 1
 INTERARRIVAL_TIME_STD = 0.5
 #note (sarah): for the exponential distribution, standard deviation=mean
 
-VIEWING_TIME_MEAN = 1
+VIEWING_TIME_MEAN = 3
 VIEWING_TIME_STD = 0.5
 
 
@@ -25,7 +25,7 @@ MIN_SCORE = 130
 ## SCORE PARAMS
 ## Adjustes relativve weight of each score.
 ## all between 0 and 1
-STYLE_CONSTANT = 0.25
+STYLE_CONSTANT = 1
 PATIENCE_CONSTANT = 1
 QUALITY_CONSTANT = 1
 
@@ -126,7 +126,7 @@ class Customer:
 
         ## For quality we want to have low quality paintings be very undesirable and high quality very desirable but 25-75 should have less of an effect
         ## We can do this by using an inverse sigmoid function
-        retval =  (0.5 - math.log((1-quality)/(quality * MIDPOINT_HEIGHT))/SLOPE_CONSTANT) * QUALITY_CONSTANT * 100
+        retval =  np.clip((0.5 - math.log((1-quality)/(quality * MIDPOINT_HEIGHT))/SLOPE_CONSTANT) * QUALITY_CONSTANT * 100, 0, 100)
         if(DEBUG):
             print("Quality score: " + str(retval))
         return retval
@@ -308,12 +308,12 @@ class SimStats:
 
 
         ###### LEAVE EARLY STATS ######
-        avg_num_paintings_left = self.num_painting_left_leave_early/self.num_leave_early if self.num_leave_early > 0 else "NA"
+        avg_num_paintings_left = self.num_painting_left_leave_early/self.num_leave_early if self.num_leave_early > 0 else 0
 
         print()
         print("Statistics for Customers who leave for Each Painting: {}".format(self.num_customers_leave_early))
         print("Average Score for painting that made Customers leave Early: {:.2f}".format(np.average(np.array(self.leave_early_scores))))
-        print("Average number of paintings left when customer leaves early: {}".format(avg_num_paintings_left))
+        print("Average number of paintings left when customer leaves early: {:.2f}%".format(avg_num_paintings_left/len(paintings) * 100))
         print("Percentage of Customers who leave early: {}%".format(self.num_leave_early/self.num_customers * 100))
 
 
@@ -498,7 +498,7 @@ class GallerySim:
                 self.stats.num_leave_early += 1
                 self.stats.num_customers_leave_early[customer.stats.num_paintings_viewed] += 1
                 self.stats.leave_early_scores.append(painting_scores[bestIndex])
-                self.stats.num_painting_left_leave_early += customer.stats.num_paintings_viewed
+                self.stats.num_painting_left_leave_early += self.stats.num_paintings - customer.stats.num_paintings_viewed
             
 
             # EVent is now a departure
@@ -541,7 +541,7 @@ class GallerySim:
 def main():
     '''Produce data for multiple scenarios (for each scenario, run simulation w/ 5 different initial random seeds)
         and process collected data.'''
-    test = GallerySim(10,1000,1, False)
+    test = GallerySim(50,1000,20, False)
 
 if __name__ == '__main__':
     main()
